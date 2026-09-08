@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Rotina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171c;
+    --surface:#1b1f26;
+    --surface-2:#232833;
+    --line:#2c313c;
+    --accent:#e7b44c;
+    --accent-dim:rgba(231,180,76,.16);
+    --done:#7cb88f;
+    --done-dim:rgba(124,184,143,.16);
+    --danger:#e0645c;
+    --text:#eeece6;
+    --text-muted:#8b93a3;
+    --text-faint:#565d6b;
+    --radius-lg:22px;
+    --radius-md:13px;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    overscroll-behavior-y:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  .topbar{
+    padding:calc(20px + var(--safe-top)) 20px 16px;
+    flex-shrink:0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .topbar .greet-wrap{min-width:0;}
+  .greet{
+    font-family:'Fraunces',serif;
+    font-size:26px;
+    font-weight:500;
+    line-height:1.15;
+    margin:0;
+    letter-spacing:-.01em;
+  }
+  .subdate{
+    color:var(--text-muted);
+    font-size:13.5px;
+    margin-top:4px;
+  }
+  .streak{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:12.5px;
+    color:var(--accent);
+    margin-top:8px;
+    font-weight:500;
+  }
+  .ring-wrap{
+    position:relative;
+    width:56px;
+    height:56px;
+    flex-shrink:0;
+  }
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-pct{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:600;
+  }
+
+  main{
+    flex:1;
+    overflow-y:auto;
+    padding-bottom:calc(96px + var(--safe-bottom));
+    -webkit-overflow-scrolling:touch;
+  }
+  .view{display:none;}
+  .view.active{display:block;animation:fadein .22s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .section-label{
+    font-size:13px;
+    color:var(--text-muted);
+    padding:4px 20px 10px;
+    font-weight:500;
+  }
+
+  .activity-list{padding:0 20px;}
+  .activity-row{
+    display:flex;
+    align-items:center;
+    gap:13px;
+    padding:13px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .activity-row:last-child{border-bottom:none;}
+  .icon-badge{
+    width:38px;height:38px;flex-shrink:0;
+    border-radius:11px;
+    background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px;
+  }
+  .activity-mid{flex:1;min-width:0;}
+  .activity-name{
+    font-size:15px;
+    font-weight:500;
+    transition:color .25s, text-decoration-color .25s;
+  }
+  .activity-row.done .activity-name{
+    color:var(--text-faint);
+    text-decoration:line-through;
+    text-decoration-color:var(--text-faint);
+  }
+  .activity-time{
+    font-size:12.5px;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .check-btn{
+    width:26px;height:26px;flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--line);
+    background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .18s ease;
+  }
+  .check-btn svg{opacity:0;transform:scale(.5);transition:all .18s ease;}
+  .check-btn.checked{background:var(--done);border-color:var(--done);}
+  .check-btn.checked svg{opacity:1;transform:scale(1);}
+
+  .empty-state{
+    text-align:center;
+    padding:60px 30px;
+    color:var(--text-muted);
+    font-size:14px;
+    line-height:1.6;
+  }
+  .empty-state .emoji{font-size:34px;display:block;margin-bottom:10px;}
+
+  .day-scroller{
+    display:flex;
+    gap:8px;
+    padding:2px 20px 18px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .day-scroller::-webkit-scrollbar{display:none;}
+  .day-chip{
+    flex-shrink:0;
+    padding:9px 15px;
+    border-radius:999px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    font-size:13.5px;
+    font-weight:500;
+    font-family:'Inter',sans-serif;
+  }
+  .day-chip.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#1a1408;
+  }
+  .activity-row .menu-btn{
+    width:30px;height:30px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-faint);
+    background:none;border:none;
+  }
+
+  .heatmap{ padding:2px 20px 22px; }
+  .heatmap-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+  }
+  .heat-cell{
+    aspect-ratio:1;
+    border-radius:8px;
+    background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;
+    color:var(--text-faint);
+    font-weight:500;
+  }
+  .hist-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:12px 20px;
+    border-bottom:1px solid var(--line);
+  }
+  .hist-date{width:74px;flex-shrink:0;}
+  .hist-date .d1{font-size:14px;font-weight:500;}
+  .hist-date .d2{font-size:11.5px;color:var(--text-muted);}
+  .hist-bar-track{
+    flex:1;height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;
+  }
+  .hist-bar-fill{height:100%;border-radius:99px;background:var(--accent);transition:width .3s;}
+  .hist-pct{width:38px;text-align:right;font-size:12.5px;color:var(--text-muted);flex-shrink:0;}
+  .summary-banner{
+    margin:4px 20px 18px;
+    padding:16px 18px;
+    background:var(--surface);
+    border-radius:var(--radius-md);
+    border:1px solid var(--line);
+  }
+  .summary-banner .big{font-family:'Fraunces',serif;font-size:24px;font-weight:500;}
+  .summary-banner .small{font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+
+  .fab{
+    position:absolute;
+    right:20px;
+    bottom:calc(88px + var(--safe-bottom));
+    width:54px;height:54px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#1a1408;
+    border:none;
+    font-size:26px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 20px rgba(231,180,76,.35);
+    transition:transform .15s ease;
+    z-index:5;
+  }
+  .fab:active{transform:scale(.92);}
+  .fab.hidden{display:none;}
+
+  .bottomnav{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    display:flex;
+    background:rgba(27,31,38,.92);
+    backdrop-filter:blur(14px);
+    border-top:1px solid var(--line);
+    padding:9px 10px calc(9px + var(--safe-bottom));
+  }
+  .nav-btn{
+    flex:1;
+    background:none;border:none;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    color:var(--text-faint);
+    padding:6px 0;
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    font-weight:500;
+  }
+  .nav-btn.active{color:var(--accent);}
+  .nav-btn svg{width:22px;height:22px;}
+
+  .sheet-overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.5);
+    display:none;
+    align-items:flex-end;
+    z-index:20;
+  }
+  .sheet-overlay.open{display:flex;}
+  .sheet{
+    width:100%;
+    max-width:480px;
+    margin:0 auto;
+    background:var(--surface);
+    border-radius:24px 24px 0 0;
+    padding:14px 22px calc(26px + var(--safe-bottom));
+    max-height:88vh;
+    overflow-y:auto;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.32,.72,0,1);
+  }
+  .sheet-overlay.open .sheet{transform:translateY(0);}
+  .sheet-handle{
+    width:36px;height:4px;border-radius:99px;background:var(--line);
+    margin:0 auto 18px;
+  }
+  .sheet h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:21px;
+    margin:0 0 18px;
+  }
+  .field-label{
+    font-size:12.5px;
+    color:var(--text-muted);
+    margin:16px 0 7px;
+    font-weight:500;
+  }
+  .field-label:first-of-type{margin-top:0;}
+  input[type=text],input[type=time]{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:13px 14px;
+    color:var(--text);
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+  }
+  input:focus{outline:none;border-color:var(--accent);}
+  .icon-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:7px;
+  }
+  .icon-opt{
+    aspect-ratio:1;
+    border-radius:11px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+  }
+  .icon-opt.sel{background:var(--accent-dim);border-color:var(--accent);}
+  .days-grid{
+    display:flex;flex-wrap:wrap;gap:7px;
+  }
+  .day-opt{
+    padding:9px 13px;
+    border-radius:999px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    font-size:13px;
+    font-weight:500;
+  }
+  .day-opt.sel{background:var(--accent);border-color:var(--accent);color:#1a1408;}
+  .sheet-actions{
+    display:flex;gap:10px;margin-top:24px;
+  }
+  .btn{
+    flex:1;
+    padding:14px;
+    border-radius:var(--radius-md);
+    border:none;
+    font-size:14.5px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+  }
+  .btn-primary{background:var(--accent);color:#1a1408;}
+  .btn-primary:active{opacity:.85;}
+  .btn-ghost{background:var(--surface-2);color:var(--text);}
+  .btn-danger-text{
+    background:none;border:none;color:var(--danger);
+    font-size:13.5px;font-weight:500;
+    display:block;margin:14px auto 0;
+    padding:6px;
+  }
+
+  .toast{
+    position:absolute;
+    left:50%;bottom:calc(96px + var(--safe-bottom));
+    transform:translateX(-50%) translateY(10px);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:all .25s ease;
+    z-index:30;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="greet-wrap">
+      <p class="greet" id="greetText">Olá</p>
+      <div class="subdate" id="dateText"></div>
+      <div class="streak" id="streakWrap" style="display:none;">
+        <span>🔥</span><span id="streakText"></span>
+      </div>
+    </div>
+    <div class="ring-wrap">
+      <svg width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="#2c313c" stroke-width="5"/>
+        <circle id="ringFg" cx="28" cy="28" r="24" fill="none" stroke="#e7b44c" stroke-width="5"
+          stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8"
+          style="transition:stroke-dashoffset .4s ease"/>
+      </svg>
+      <div class="ring-pct" id="ringPct">0%</div>
+    </div>
+  </div>
+
+  <main>
+    <section class="view active" id="view-hoje">
+      <div class="activity-list" id="hojeList"></div>
+    </section>
+
+    <section class="view" id="view-semana">
+      <div class="day-scroller" id="daySelector"></div>
+      <div class="section-label" id="semanaLabel">Atividades</div>
+      <div class="activity-list" id="semanaList"></div>
+    </section>
+
+    <section class="view" id="view-historico">
+      <div class="section-label">Últimos 14 dias</div>
+      <div class="heatmap"><div class="heatmap-grid" id="heatGrid"></div></div>
+      <div class="summary-banner" id="summaryBanner"></div>
+      <div id="histList"></div>
+    </section>
+  </main>
+
+  <button class="fab" id="fabAdd">+</button>
+
+  <nav class="bottomnav">
+    <button class="nav-btn active" data-view="hoje">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.5 12H2M22 12h-2.5M6 6l1.6 1.6M16.4 16.4L18 18M18 6l-1.6 1.6M7.6 16.4L6 18"/></svg>
+      Hoje
+    </button>
+    <button class="nav-btn" data-view="semana">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+      Semana
+    </button>
+    <button class="nav-btn" data-view="historico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>
+      Histórico
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<div class="sheet-overlay" id="sheetOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 id="sheetTitle">Nova atividade</h2>
+
+    <div class="field-label">Nome</div>
+    <input type="text" id="fName" placeholder="Ex: Meditar">
+
+    <div class="field-label">Horário</div>
+    <input type="time" id="fTime" value="08:00">
+
+    <div class="field-label">Ícone</div>
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <div class="field-label">Dias da semana</div>
+    <div class="days-grid" id="daysGrid"></div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancel">Cancelar</button>
+      <button class="btn btn-primary" id="btnSave">Salvar</button>
+    </div>
+    <button class="btn-danger-text" id="btnDelete" style="display:none;">Excluir atividade</button>
+  </div>
+</div>
+
+<script>
+const DIAS = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+const DIAS_ABR = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+const ICONES = ["💪","🏋️","📚","💻","🍽️","😴","🧘","🚿","🎯","✅","📝","🎵","🚶","🧹","🛒","☕","💊","🐶","🚴","🎨","📞","🍳","🌱","🧴","📖","⏰","🚗","🧠"];
+
+let atividades = [];
+let historico = {};
+let currentView = "hoje";
+let selectedDay = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+let editingId = null;
+let sheetIcon = ICONES[9];
+let sheetDays = new Set();
+
+const $ = (id) => document.getElementById(id);
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function weekdayIdx(date){ const w = date.getDay(); return w === 0 ? 6 : w - 1; }
+
+async function loadData(){
+  try {
+    const resA = await fetch('/api/atividades');
+    atividades = await resA.json();
+  } catch(e) { atividades = []; }
+
+  try {
+    const resH = await fetch('/api/historico');
+    historico = await resH.json();
+  } catch(e) { historico = {}; }
+}
+
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function renderHeader(){
+  const now = new Date();
+  const h = now.getHours();
+  $('greetText').textContent = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  $('dateText').textContent = DIAS[weekdayIdx(now)] + ", " + now.toLocaleDateString('pt-BR',{day:'numeric',month:'long'});
+
+  const wd = weekdayIdx(now);
+  const todays = atividades.filter(a=>a.dias.includes(wd));
+  const reg = historico[todayStr()] || {};
+  const done = todays.filter(a=>reg[a.id]).length;
+  const pct = todays.length ? Math.round(done/todays.length*100) : 0;
+
+  const circ = 2*Math.PI*24;
+  $('ringFg').style.strokeDasharray = circ;
+  $('ringFg').style.strokeDashoffset = circ - (circ*pct/100);
+  $('ringPct').textContent = pct + "%";
+
+  const streak = computeStreak();
+  if(streak > 0){
+    $('streakWrap').style.display = "flex";
+    $('streakText').textContent = streak + (streak === 1 ? " dia seguido" : " dias seguidos");
+  } else {
+    $('streakWrap').style.display = "none";
+  }
+}
+
+function computeStreak(){
+  let streak = 0;
+  let d = new Date();
+  for(let i=0;i<365;i++){
+    const wd = weekdayIdx(d);
+    const dStr = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const scheduled = atividades.filter(a=>a.dias.includes(wd));
+    if(scheduled.length === 0){ d.setDate(d.getDate()-1); continue; }
+    const reg = historico[dStr] || {};
+    const doneCount = scheduled.filter(a=>reg[a.id]).length;
+    const complete = doneCount === scheduled.length;
+    if(!complete){
+      if(i===0){ d.setDate(d.getDate()-1); continue; }
+      break;
+    }
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+function renderHoje(){
+  const wd = weekdayIdx(new Date());
+  const list = atividades.filter(a=>a.dias.includes(wd)).sort((a,b)=>a.horario.localeCompare(b.horario));
+  const wrap = $('hojeList');
+  const reg = historico[todayStr()] || {};
+
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><span class="emoji">🌤️</span>Nenhuma atividade para hoje.<br>Adicione na aba Semana.</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(a=>{
+    const done = !!reg[a.id];
+    return `
+    <div class="activity-row ${done?'done':''}">
+      <div class="icon-badge">${a.icone}</div>
+      <div class="activity-mid">
+        <div class="activity-name">${escapeHtml(a.nome)}</div>
+        <div class="activity-time">${a.horario}</div>
+      </div>
+      <button class="check-btn ${done?'checked':''}" data-id="${a.id}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14171c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('.check-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const dStr = todayStr();
+      if(!historico[dStr]) historico[dStr] = {};
+      const newStatus = !historico[dStr][id];
+      historico[dStr][id] = newStatus;
+
+      await fetch('/api/historico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: dStr, atividade_id: id, status: newStatus })
+      });
+
+      renderHoje(); renderHeader(); renderHistorico();
+    });
+  });
+}
+
+function renderDaySelector(){
+  $('daySelector').innerHTML = DIAS_ABR.map((d,i)=>
+    `<button class="day-chip ${i===selectedDay?'active':''}" data-day="${i}">${d}</button>`
+  ).join('');
+  $('daySelector').querySelectorAll('.day-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      selectedDay = parseInt(chip.dataset.day);
+      renderDaySelector(); renderSemana();
+    });
+  });
+}
+
+function renderSemana(){
+  $('semanaLabel').textContent = "Atividades de " + DIAS[selectedDay];
+  const list = atividades.filter(a=>a.dias.includes(selectedDay)).sort((a,b)=>a.horario.localeCompare(b.horario));
+  const wrap = $('semanaList');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><span class="emoji">📋</span>Nenhuma atividade cadastrada.<br>Toque em + para adicionar.</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(a=>`
+    <div class="activity-row" data-id="${a.id}">
+      <div class="icon-badge">${a.icone}</div>
+      <div class="activity-mid">
+        <div class="activity-name">${escapeHtml(a.nome)}</div>
+        <div class="activity-time">${a.horario}</div>
+      </div>
+      <button class="menu-btn" data-edit="${a.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>
+      </button>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openSheet(btn.dataset.edit));
+  });
+}
+
+function renderHistorico(){
+  const grid = $('heatGrid');
+  const days = [];
+  const today = new Date();
+  for(let i=13;i>=0;i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  let totalDone=0, totalSched=0;
+  grid.innerHTML = days.map(d=>{
+    const wd = weekdayIdx(d);
+    const dStr = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const sched = atividades.filter(a=>a.dias.includes(wd));
+    const reg = historico[dStr] || {};
+    const done = sched.filter(a=>reg[a.id]).length;
+    const pct = sched.length ? done/sched.length : 0;
+    totalDone += done; totalSched += sched.length;
+    let bg = 'var(--surface-2)';
+    if(sched.length){
+      if(pct>=1) bg = 'var(--done)';
+      else if(pct>=.5) bg = 'var(--accent)';
+      else if(pct>0) bg = 'var(--accent-dim)';
+    }
+    return `<div class="heat-cell" style="background:${bg}; color:${pct>=.5?'#14171c':'var(--text-faint)'}">${d.getDate()}</div>`;
+  }).join('');
+
+  const pctGeral = totalSched ? Math.round(totalDone/totalSched*100) : 0;
+  $('summaryBanner').innerHTML = `<div class="big">${pctGeral}%</div><div class="small">${totalDone} de ${totalSched} atividades concluídas nos últimos 14 dias</div>`;
+
+  const listWrap = $('histList');
+  listWrap.innerHTML = days.slice().reverse().map(d=>{
+    const wd = weekdayIdx(d);
+    const dStr = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const sched = atividades.filter(a=>a.dias.includes(wd));
+    const reg = historico[dStr] || {};
+    const done = sched.filter(a=>reg[a.id]).length;
+    const pct = sched.length ? Math.round(done/sched.length*100) : 0;
+    return `<div class="hist-row">
+      <div class="hist-date"><div class="d1">${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</div><div class="d2">${DIAS_ABR[wd]}</div></div>
+      <div class="hist-bar-track"><div class="hist-bar-fill" style="width:${pct}%"></div></div>
+      <div class="hist-pct">${sched.length? pct+'%' : '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderIconGrid(){
+  $('iconGrid').innerHTML = ICONES.map(ic=>
+    `<button type="button" class="icon-opt ${ic===sheetIcon?'sel':''}" data-icon="${ic}">${ic}</button>`
+  ).join('');
+  $('iconGrid').querySelectorAll('.icon-opt').forEach(b=>{
+    b.addEventListener('click', ()=>{ sheetIcon = b.dataset.icon; renderIconGrid(); });
+  });
+}
+
+function renderDaysGrid(){
+  $('daysGrid').innerHTML = DIAS.map((d,i)=>
+    `<button type="button" class="day-opt ${sheetDays.has(i)?'sel':''}" data-day="${i}">${DIAS_ABR[i]}</button>`
+  ).join('');
+  $('daysGrid').querySelectorAll('.day-opt').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const i = parseInt(b.dataset.day);
+      sheetDays.has(i) ? sheetDays.delete(i) : sheetDays.add(i);
+      renderDaysGrid();
+    });
+  });
+}
+
+function openSheet(id){
+  editingId = id || null;
+  if(id){
+    const a = atividades.find(x=>x.id===id);
+    $('sheetTitle').textContent = "Editar atividade";
+    $('fName').value = a.nome;
+    $('fTime').value = a.horario;
+    sheetIcon = a.icone;
+    sheetDays = new Set(a.dias);
+    $('btnDelete').style.display = "block";
+  } else {
+    $('sheetTitle').textContent = "Nova atividade";
+    $('fName').value = "";
+    $('fTime').value = "08:00";
+    sheetIcon = ICONES[9];
+    sheetDays = new Set([selectedDay]);
+    $('btnDelete').style.display = "none";
+  }
+  renderIconGrid(); renderDaysGrid();
+  $('sheetOverlay').classList.add('open');
+}
+
+function closeSheet(){
+  $('sheetOverlay').classList.remove('open');
+  editingId = null;
+}
+
+async function saveSheet(){
+  const nome = $('fName').value.trim();
+  const horario = $('fTime').value;
+  if(!nome){ showToast("Digite um nome"); return; }
+  if(sheetDays.size===0){ showToast("Escolha ao menos um dia"); return; }
+
+  const item = {
+    id: editingId || ('a'+Date.now()+Math.random().toString(36).slice(2,7)),
+    nome,
+    horario,
+    icone: sheetIcon,
+    dias: [...sheetDays].sort()
+  };
+
+  await fetch('/api/atividades', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item)
+  });
+
+  closeSheet();
+  await loadData();
+  renderAll();
+  showToast("Salvo");
+}
+
+async function deleteActivity(){
+  if(!editingId) return;
+
+  await fetch(`/api/atividades/${editingId}`, { method: 'DELETE' });
+
+  closeSheet();
+  await loadData();
+  renderAll();
+  showToast("Atividade excluída");
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function switchView(v){
+  currentView = v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  $('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  $('fabAdd').classList.toggle('hidden', v==='historico');
+}
+
+function renderAll(){
+  renderHeader();
+  renderHoje();
+  renderDaySelector();
+  renderSemana();
+  renderHistorico();
+}
+
+document.querySelectorAll('.nav-btn').forEach(b=>{
+  b.addEventListener('click', ()=>switchView(b.dataset.view));
+});
+$('fabAdd').addEventListener('click', ()=>openSheet(null));
+$('btnCancel').addEventListener('click', closeSheet);
+$('btnSave').addEventListener('click', saveSheet);
+$('btnDelete').addEventListener('click', deleteActivity);
+$('sheetOverlay').addEventListener('click', (e)=>{ if(e.target.id==='sheetOverlay') closeSheet(); });
+
+(async function init(){
+  await loadData();
+  renderAll();
+})();
+</script>
+</body>
+</html>
